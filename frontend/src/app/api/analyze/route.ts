@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   })
 
   try {
-    const script = path.join(process.cwd(), 'backend', 'analyze.py')
+    const script = path.join(process.cwd(), '..', 'backend', 'analyze.py')
     const proc = spawn('python3', [script, tempPath])
 
     let stdout = ''
