@@ -1,47 +1,43 @@
-import * as XLSX from 'xlsx'
-import EDAResults from './EDAResults'
-    if (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')) {
-      const buffer = await f.arrayBuffer()
-      const wb = XLSX.read(buffer, { type: 'array' })
-      const sheet = wb.Sheets[wb.SheetNames[0]]
-      const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 }) as string[][]
-      const headers = rows[0] as string[]
-      setPreview({ headers, rows: rows.slice(1, 6) })
-    } else {
-      const text = await f.text()
-      const lines = text.trim().split(/\r?\n/)
-      const headers = lines[0].split(',')
-      const rows = lines.slice(1, 6).map((l) => l.split(','))
-      setPreview({ headers, rows })
-    }
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { UploadCloud, FileText, Loader2 } from "lucide-react";
-
-interface PreviewData {
+"use client";
+import React, { ChangeEvent, useState } from "react";
+import * as XLSX from "xlsx";
+import EDAResults from "./EDAResults";
   headers: string[];
   rows: string[][];
-}
-
-export default function UploadDataImproved() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFile(f);
+    if (f.name.endsWith(".xlsx") || f.name.endsWith(".xls")) {
+      const buffer = await f.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 }) as string[][];
+      const headers = rows[0] as string[];
+      setPreview({ headers, rows: rows.slice(1, 6) });
+      const text = await f.text();
+      const lines = text.trim().split(/\r?\n/);
+      const headers = lines[0].split(",");
+      const rows = lines.slice(1, 6).map((line) => line.split(","));
+      setPreview({ headers, rows });
+  };
+    if (!file) return;
+    setLoading(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/analyze", {
+      method: "POST",
+    });
+    const data = await res.json();
+    setResult(data);
+    setLoading(false);
+  };
+      <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileChange} />
+        {loading ? "Analyzing..." : "Analyze"}
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
