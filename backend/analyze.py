@@ -1,18 +1,28 @@
 import json
 import sys
 from typing import Any, Dict
-
 import numpy as np
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
+import os
 
 
 def main(path: str) -> None:
     try:
-        df = pd.read_csv(path)
+        ext = os.path.splitext(path)[1].lower()
+        if ext == ".csv":
+            try:
+                df = pd.read_csv(path, encoding="utf-8")
+            except UnicodeDecodeError:
+                df = pd.read_csv(path, encoding="latin1")
+        elif ext in [".xls", ".xlsx"]:
+            df = pd.read_excel(path)
+        else:
+            print(json.dumps({"error": f"Unsupported file extension: {ext}"}))
+            sys.exit(1)
     except Exception as e:
-        print(json.dumps({"error": f"Failed to read CSV: {e}"}))
+        print(json.dumps({"error": f"Failed to read file: {e}"}))
         return
 
     headers = df.columns.tolist()
@@ -20,7 +30,6 @@ def main(path: str) -> None:
 
     types = ["numeric" if col in numeric_cols else "categorical" for col in headers]
 
-    # descriptive statistics
     stats: Dict[str, Dict[str, Any]] = {}
     histograms: Dict[str, Dict[str, Any]] = {}
     for col in headers:
@@ -45,7 +54,6 @@ def main(path: str) -> None:
                 "outliers": int(outlier_mask.sum()),
             }
 
-            # histogram with 10 bins
             if len(col_series) > 0:
                 bins = np.linspace(min_v, max_v, num=11)
                 counts, _ = np.histogram(col_series, bins=bins)
@@ -56,7 +64,6 @@ def main(path: str) -> None:
         else:
             stats[col] = {"unique": int(series.nunique())}
 
-    # correlation matrix for numeric columns
     correlations: Dict[str, float] = {}
     if len(numeric_cols) >= 2:
         corr_df = df[numeric_cols].corr(method="pearson").fillna(0)
@@ -64,7 +71,6 @@ def main(path: str) -> None:
             for b in numeric_cols[i + 1 :]:
                 correlations[f"{a}__{b}"] = float(corr_df.at[a, b])
 
-    # clustering with KMeans
     clusters: Dict[str, Any] | None = None
     if len(numeric_cols) >= 2:
         try:
@@ -79,7 +85,6 @@ def main(path: str) -> None:
         except Exception as e:
             clusters = {"error": str(e)}
 
-    # outlier detection using IsolationForest across numeric columns
     outlier_indices: list[int] = []
     if len(numeric_cols) >= 1:
         try:
@@ -93,10 +98,14 @@ def main(path: str) -> None:
     for pair, val in correlations.items():
         if abs(val) > 0.8:
             a, b = pair.split("__")
-            insights.append(f"Existe una fuerte correlación entre {a} e {b} (r = {val:.2f})")
+            insights.append(
+                f"Existe una fuerte correlación entre {a} e {b} (r = {val:.2f})"
+            )
     for key, st in stats.items():
         if isinstance(st, dict) and st.get("outliers", 0) > 0:
-            insights.append(f"Se detectaron {st['outliers']} valores atípicos en la columna {key}")
+            insights.append(
+                f"Se detectaron {st['outliers']} valores atípicos en la columna {key}"
+            )
 
     result = {
         "headers": headers,
