@@ -595,9 +595,9 @@ export default function UploadDataImproved() {
                       Resumen del Análisis Automatizado
                     </h3>
                     <ScrollArea className="bg-muted p-4 rounded-md max-h-[500px] text-sm">
-                      <pre className="whitespace-pre-wrap break-words font-sans">
-                        {textualReport}
-                      </pre>
+                      <div className="bg-muted p-4 rounded-md h-[400px] overflow-y-auto text-sm whitespace-pre-wrap break-words font-mono">
+                        <pre>{textualReport}</pre>
+                      </div>
                     </ScrollArea>
                   </div>
                 )}
