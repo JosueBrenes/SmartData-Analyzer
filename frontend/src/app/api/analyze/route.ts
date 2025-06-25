@@ -1,44 +1,42 @@
-import Busboy from 'busboy'
-import { promises as fs, createWriteStream } from 'fs'
-export const runtime = 'nodejs'
+import { NextResponse } from "next/server";
+import Busboy from "busboy";
+import { tmpdir } from "os";
+import { Readable } from "stream";
+import { createWriteStream, promises as fs } from "fs";
+import path from "path";
+import { spawn } from "child_process";
+
+export const runtime = "nodejs";
+
 export async function POST(req: Request) {
-  const headers = Object.fromEntries(req.headers.entries())
-  const busboy = Busboy({ headers })
-  const stream = Readable.fromWeb(req.body as any) as any
-  let tempPath: string | null = null
+  const headers = Object.fromEntries(req.headers.entries());
+  const busboy = Busboy({ headers });
+  const stream = Readable.fromWeb(req.body as any) as any;
 
-  const busboyPromise = new Promise<void>((resolve, reject) => {
-    busboy.on('file', (_name, file, info) => {
-      const p = path.join(tmpdir(), `${Date.now()}-${info.filename}`)
-      tempPath = p
-      const write = createWriteStream(p)
-      file.pipe(write)
-      write.on('finish', () => resolve())
-      write.on('error', reject)
-    busboy.on('error', reject)
-    stream.pipe(busboy)
-    await busboyPromise
-    if (!tempPath) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-    }
-    if (tempPath) {
-      await fs.unlink(tempPath).catch(() => {})
-    }
-      return NextResponse.json(data, { status: 500 })
-    }
-    if (tempPath) {
-      await fs.unlink(tempPath).catch(() => {})
-    }
+  let tempPath: string | null = null;
 
-    bb.on("error", reject);
-    bb.on("finish", () => {
-      if (!fileWritten) reject(new Error("File not provided"));
+  const fileWritePromise = new Promise<void>((resolve, reject) => {
+    busboy.on("file", (_name, file, info) => {
+      const p = path.join(tmpdir(), `${Date.now()}-${info.filename}`);
+      tempPath = p;
+
+      const write = createWriteStream(p);
+      file.pipe(write);
+      write.on("finish", resolve);
+      write.on("error", reject);
     });
 
-    Readable.fromWeb(req.body as any).pipe(bb);
+    busboy.on("error", reject);
+    stream.pipe(busboy);
   });
 
   try {
+    await fileWritePromise;
+
+    if (!tempPath) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+
     const script = path.join(process.cwd(), "..", "backend", "analyze.py");
     const pythonCommand = process.platform === "win32" ? "python" : "python3";
     const proc = spawn(pythonCommand, [script, tempPath]);
@@ -64,7 +62,10 @@ export async function POST(req: Request) {
 
     if (code !== 0) {
       console.error("❌ Python exited with error code:", code);
-      throw new Error(stderr || `Python exited with code ${code}`);
+      return NextResponse.json(
+        { error: stderr || `Python exited with code ${code}` },
+        { status: 500 }
+      );
     }
 
     try {
@@ -72,10 +73,16 @@ export async function POST(req: Request) {
       return NextResponse.json(data);
     } catch (jsonErr) {
       console.error("⚠️ Error parsing JSON:", stdout);
-      throw new Error("Failed to parse JSON from Python script");
+      return NextResponse.json(
+        { error: "Failed to parse JSON from Python script" },
+        { status: 500 }
+      );
     }
   } catch (err: any) {
-    await fs.unlink(tempPath).catch(() => {});
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
+
     console.error("🔥 API Error:", err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

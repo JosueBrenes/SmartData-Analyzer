@@ -19,6 +19,10 @@ pip install pandas scikit-learn
 pip install pandas
 ```
 
+```bash
+pip install openpyxl
+```
+
 Puedes opcionalmente crear un entorno virtual:
 
 ```bash
