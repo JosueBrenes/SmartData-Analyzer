@@ -152,19 +152,19 @@ export default function InsightCards({ insights }: InsightCardsProps) {
         </h4>
         <div className="text-sm text-muted-foreground space-y-1">
           <p>
-            • <strong>🔁 Correlaciones:</strong> Indican relaciones lineales
-            entre variables numéricas
+            • <strong>Correlaciones:</strong> Indican relaciones lineales entre
+            variables numéricas
           </p>
           <p>
-            • <strong>⚠️ Valores Atípicos:</strong> Registros que se desvían
+            • <strong>Valores Atípicos:</strong> Registros que se desvían
             significativamente del patrón normal
           </p>
           <p>
-            • <strong>🧩 Agrupamientos:</strong> Grupos naturales identificados
-            en los datos
+            • <strong>Agrupamientos:</strong> Grupos naturales identificados en
+            los datos
           </p>
           <p>
-            • <strong>📊 Información General:</strong> Estadísticas descriptivas
+            • <strong>Información General:</strong> Estadísticas descriptivas
             del dataset
           </p>
         </div>
