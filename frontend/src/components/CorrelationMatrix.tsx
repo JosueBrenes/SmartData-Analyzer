@@ -53,8 +53,6 @@ export default function CorrelationMatrix({
 
   const getColorForCorrelation = (value: number): string => {
     // Normalize value from -1 to 1 to 0 to 1
-    const normalized = (value + 1) / 2;
-
     if (value > 0) {
       // Positive correlation: white to blue
       const intensity = Math.abs(value);

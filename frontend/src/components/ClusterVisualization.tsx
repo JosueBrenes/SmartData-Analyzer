@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -30,16 +30,19 @@ export default function ClusterVisualization({
   const clusters = Array.from(
     new Set(data.map((point) => point.cluster))
   ).sort();
-  const clusterColors = [
-    "#3B82F6", // Blue
-    "#EF4444", // Red
-    "#10B981", // Green
-    "#F59E0B", // Yellow
-    "#8B5CF6", // Purple
-    "#EC4899", // Pink
-    "#06B6D4", // Cyan
-    "#84CC16", // Lime
-  ];
+  const clusterColors = useMemo(
+    () => [
+      "#3B82F6", // Blue
+      "#EF4444", // Red
+      "#10B981", // Green
+      "#F59E0B", // Yellow
+      "#8B5CF6", // Purple
+      "#EC4899", // Pink
+      "#06B6D4", // Cyan
+      "#84CC16", // Lime
+    ],
+    []
+  );
 
   const getClusterStats = () => {
     const stats: Record<number, { count: number; color: string }> = {};
@@ -57,6 +60,7 @@ export default function ClusterVisualization({
 
   useEffect(() => {
     if (!plotRef.current || data.length === 0) return;
+    const plotElement = plotRef.current;
 
     // Dynamically import Plotly to avoid SSR issues
     import("plotly.js-dist-min")
@@ -128,20 +132,20 @@ export default function ClusterVisualization({
           displaylogo: false,
         };
 
-        Plotly.newPlot(plotRef.current!, traces, layout, config);
+          Plotly.newPlot(plotElement!, traces, layout, config);
       })
       .catch((error) => {
         console.error("Error loading Plotly:", error);
       });
 
     // Cleanup function
-    return () => {
-      if (plotRef.current) {
-        import("plotly.js-dist-min").then((Plotly) => {
-          Plotly.purge(plotRef.current!);
-        });
-      }
-    };
+      return () => {
+        if (plotElement) {
+          import("plotly.js-dist-min").then((Plotly) => {
+            Plotly.purge(plotElement);
+          });
+        }
+      };
   }, [data, title, xAxisTitle, yAxisTitle, clusters, clusterColors]);
 
   if (data.length === 0) {
