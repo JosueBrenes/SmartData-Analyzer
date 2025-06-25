@@ -149,7 +149,9 @@ export default function UploadDataImproved() {
           headers = lines[0].split(",").map((h: string) => h.trim());
           rows = lines
             .slice(1, 6)
-            .map((l: string) => l.split(",").map((cell: string) => cell.trim()));
+            .map((l: string) =>
+              l.split(",").map((cell: string) => cell.trim())
+            );
         }
       } else if (f.name.endsWith(".xlsx")) {
         const data = await f.arrayBuffer();
@@ -162,7 +164,9 @@ export default function UploadDataImproved() {
 
         if (json.length > 0) {
           headers = json[0].map(String);
-          rows = json.slice(1, 6).map((row: (string | number)[]) => row.map(String));
+          rows = json
+            .slice(1, 6)
+            .map((row: (string | number)[]) => row.map(String));
         }
       } else {
         alert(
@@ -216,24 +220,28 @@ export default function UploadDataImproved() {
       // Generate charts from histograms
       const chartConfigs: ChartConfig[] = [];
       Object.entries(data.histograms).forEach(
-        ([variable, histData]: [string, { binEdges: number[]; counts: number[] }]) => {
-        const chartData = histData.binEdges.map((edge, i) => ({
-          name: `${edge.toFixed(1)}-${(
-            edge +
-            (histData.binEdges[1] - histData.binEdges[0])
-          ).toFixed(1)}`,
-          value: histData.counts[i] || 0,
-        }));
+        ([variable, histData]: [
+          string,
+          { binEdges: number[]; counts: number[] }
+        ]) => {
+          const chartData = histData.binEdges.map((edge, i) => ({
+            name: `${edge.toFixed(1)}-${(
+              edge +
+              (histData.binEdges[1] - histData.binEdges[0])
+            ).toFixed(1)}`,
+            value: histData.counts[i] || 0,
+          }));
 
-        chartConfigs.push({
-          type: "histogram",
-          title: `Distribución de ${variable}`,
-          description: `Histograma mostrando la distribución de valores para ${variable}`,
-          xKey: "name",
-          yKey: "value",
-          data: chartData,
-        });
-      });
+          chartConfigs.push({
+            type: "histogram",
+            title: `Distribución de ${variable}`,
+            description: `Histograma mostrando la distribución de valores para ${variable}`,
+            xKey: "name",
+            yKey: "value",
+            data: chartData,
+          });
+        }
+      );
 
       setCharts(chartConfigs);
     } catch (error) {
@@ -254,38 +262,47 @@ export default function UploadDataImproved() {
     lines.push(`Archivo analizado con ${data.headers.length} columnas\n`);
 
     lines.push(`--- ESTADÍSTICAS DESCRIPTIVAS ---`);
-    Object.entries(data.stats).forEach(([variable, stats]: [string, ColumnStats]) => {
-      if (stats.mean !== undefined) {
-        lines.push(`${variable}:`);
-        lines.push(`  Media: ${stats.mean.toFixed(2)}`);
-        lines.push(`  Mediana: ${stats.median.toFixed(2)}`);
-        lines.push(`  Desviación estándar: ${stats.std.toFixed(2)}`);
-        lines.push(
-          `  Rango: ${stats.min.toFixed(2)} - ${stats.max.toFixed(2)}`
-        );
-        if (stats.outliers > 0) {
-          lines.push(`  Valores atípicos detectados: ${stats.outliers}`);
+    Object.entries(data.stats).forEach(
+      ([variable, stats]: [string, ColumnStats]) => {
+        if (stats.mean !== undefined) {
+          lines.push(`${variable}:`);
+          lines.push(`  Media: ${stats.mean.toFixed(2)}`);
+          if (stats.median !== undefined) {
+            lines.push(`  Mediana: ${stats.median.toFixed(2)}`);
+          }
+          if (stats.std !== undefined) {
+            lines.push(`  Desviación estándar: ${stats.std.toFixed(2)}`);
+          }
+          if (stats.min !== undefined && stats.max !== undefined) {
+            lines.push(
+              `  Rango: ${stats.min.toFixed(2)} - ${stats.max.toFixed(2)}`
+            );
+          }
+          if (stats.outliers !== undefined && stats.outliers > 0) {
+            lines.push(`  Valores atípicos detectados: ${stats.outliers}`);
+          }
+          lines.push("");
+        } else if (stats.unique !== undefined) {
+          lines.push(`${variable}: ${stats.unique} valores únicos`);
         }
-        lines.push("");
-      } else if (stats.unique !== undefined) {
-        lines.push(`${variable}: ${stats.unique} valores únicos`);
       }
-    });
+    );
 
     lines.push(`--- CORRELACIONES SIGNIFICATIVAS ---`);
     Object.entries(data.correlations).forEach(
       ([pair, correlation]: [string, number]) => {
-      if (Math.abs(correlation) > 0.5) {
-        const [var1, var2] = pair.split("__");
-        const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
-        const direction = correlation > 0 ? "positiva" : "negativa";
-        lines.push(
-          `${var1} - ${var2}: Correlación ${direction} ${strength} (r = ${correlation.toFixed(
-            3
-          )})`
-        );
+        if (Math.abs(correlation) > 0.5) {
+          const [var1, var2] = pair.split("__");
+          const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
+          const direction = correlation > 0 ? "positiva" : "negativa";
+          lines.push(
+            `${var1} - ${var2}: Correlación ${direction} ${strength} (r = ${correlation.toFixed(
+              3
+            )})`
+          );
+        }
       }
-    });
+    );
 
     if (data.insights.length > 0) {
       lines.push(`\n--- INSIGHTS ADICIONALES ---`);
@@ -298,28 +315,31 @@ export default function UploadDataImproved() {
     // Correlation insights
     Object.entries(data.correlations).forEach(
       ([pair, correlation]: [string, number]) => {
-      if (Math.abs(correlation) > 0.7) {
-        const [var1, var2] = pair.split("__");
-        const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
-        const direction = correlation > 0 ? "positiva" : "negativa";
-        insightData.push({
-          tipo: "correlacion",
-          mensaje: `${var1} e ${var2} tienen correlación ${direction} ${strength} (r = ${correlation.toFixed(
-            2
-          )})`,
-        });
+        if (Math.abs(correlation) > 0.7) {
+          const [var1, var2] = pair.split("__");
+          const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
+          const direction = correlation > 0 ? "positiva" : "negativa";
+          insightData.push({
+            tipo: "correlacion",
+            mensaje: `${var1} e ${var2} tienen correlación ${direction} ${strength} (r = ${correlation.toFixed(
+              2
+            )})`,
+          });
+        }
       }
-    });
+    );
 
-      // Outlier insights
-      Object.entries(data.stats).forEach(([variable, stats]: [string, ColumnStats]) => {
-      if (stats.outliers && stats.outliers > 0) {
-        insightData.push({
-          tipo: "outlier",
-          mensaje: `Se detectaron ${stats.outliers} valores atípicos en ${variable}`,
-        });
+    // Outlier insights
+    Object.entries(data.stats).forEach(
+      ([variable, stats]: [string, ColumnStats]) => {
+        if (stats.outliers && stats.outliers > 0) {
+          insightData.push({
+            tipo: "outlier",
+            mensaje: `Se detectaron ${stats.outliers} valores atípicos en ${variable}`,
+          });
+        }
       }
-    });
+    );
 
     // General insights
     insightData.push({
@@ -368,8 +388,9 @@ export default function UploadDataImproved() {
 
         Object.entries(groupedData).forEach(
           ([categoria, valores]: [string, number[]]) => {
-          boxplotData.push({ categoria, valores });
-        });
+            boxplotData.push({ categoria, valores });
+          }
+        );
       }
     }
 
@@ -381,7 +402,10 @@ export default function UploadDataImproved() {
         (point: number[], index: number) => ({
           x: point[0],
           y: point[1],
-          cluster: data.clusters.assignments[index],
+          cluster:
+            data.clusters && data.clusters.assignments
+              ? data.clusters.assignments[index]
+              : -1,
           id: index + 1,
         })
       );
@@ -481,11 +505,11 @@ export default function UploadDataImproved() {
         </div>
       );
     }
-      return (
-        <p key={index}>
-          Tipo de gráfico &apos;{chartConfig.type}&apos; no soportado todavía.
-        </p>
-      );
+    return (
+      <p key={index}>
+        Tipo de gráfico &apos;{chartConfig.type}&apos; no soportado todavía.
+      </p>
+    );
   };
 
   return (
