@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Layout, Config } from "plotly.js-dist-min";
 
 interface BoxPlotData {
   categoria: string;
@@ -27,7 +28,6 @@ export default function BoxPlot({
     if (!plotRef.current || data.length === 0) return;
     const plotElement = plotRef.current;
 
-    // Dynamically import Plotly to avoid SSR issues
     import("plotly.js-dist-min")
       .then((Plotly) => {
         const traces = data.map((item) => ({
@@ -43,18 +43,18 @@ export default function BoxPlot({
           },
         }));
 
-        const layout = {
+        const layout: Partial<Layout> = {
           title: {
             text: title,
             font: { size: 16, family: "Arial, sans-serif" },
           },
           xaxis: {
-            title: xAxisTitle,
+            title: { text: xAxisTitle },
             showgrid: true,
             gridcolor: "#e5e7eb",
           },
           yaxis: {
-            title: yAxisTitle,
+            title: { text: yAxisTitle },
             showgrid: true,
             gridcolor: "#e5e7eb",
           },
@@ -73,27 +73,30 @@ export default function BoxPlot({
           showlegend: false,
         };
 
-        const config = {
+        const config: Partial<Config> = {
           responsive: true,
           displayModeBar: true,
-          modeBarButtonsToRemove: ["pan2d", "lasso2d", "select2d"],
+          modeBarButtonsToRemove: [
+            "pan2d",
+            "lasso2d",
+            "select2d",
+          ] as Partial<Config>["modeBarButtonsToRemove"],
           displaylogo: false,
         };
 
-        Plotly.newPlot(plotElement!, traces, layout, config);
+        Plotly.newPlot(plotElement, traces, layout, config);
       })
       .catch((error) => {
         console.error("Error loading Plotly:", error);
       });
 
-    // Cleanup function
-      return () => {
-        if (plotElement) {
-          import("plotly.js-dist-min").then((Plotly) => {
-            Plotly.purge(plotElement);
-          });
-        }
-      };
+    return () => {
+      if (plotElement) {
+        import("plotly.js-dist-min").then((Plotly) => {
+          Plotly.purge(plotElement);
+        });
+      }
+    };
   }, [data, title, xAxisTitle, yAxisTitle]);
 
   if (data.length === 0) {
