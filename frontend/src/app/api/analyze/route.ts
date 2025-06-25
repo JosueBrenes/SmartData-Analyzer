@@ -11,9 +11,27 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const headers = Object.fromEntries(req.headers.entries());
   const busboy = Busboy({ headers });
-  const stream = Readable.fromWeb(
-    req.body as ReadableStream<Uint8Array>
-  );
+  const bodyStream = req.body as unknown as ReadableStream<Uint8Array>;
+
+  function webStreamToNode(stream: ReadableStream<Uint8Array>) {
+    const reader = stream.getReader();
+    return new Readable({
+      async read() {
+        try {
+          const { done, value } = await reader.read();
+          if (done) {
+            this.push(null);
+          } else {
+            this.push(Buffer.from(value));
+          }
+        } catch (err) {
+          this.destroy(err as Error);
+        }
+      },
+    });
+  }
+
+  const stream = webStreamToNode(bodyStream);
 
   let tempPath: string | null = null;
 
@@ -73,7 +91,7 @@ export async function POST(req: Request) {
     try {
       const data = JSON.parse(stdout || "{}");
       return NextResponse.json(data);
-      } catch {
+    } catch {
       console.error("⚠️ Error parsing JSON:", stdout);
       return NextResponse.json(
         { error: "Failed to parse JSON from Python script" },
