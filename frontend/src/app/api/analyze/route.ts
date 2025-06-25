@@ -1,36 +1,34 @@
 import { NextResponse } from 'next/server'
-import formidable from 'formidable'
-import { promises as fs } from 'fs'
+import Busboy from 'busboy'
+import { promises as fs, createWriteStream } from 'fs'
 import path from 'path'
 import { spawn } from 'child_process'
 import { tmpdir } from 'os'
-import { IncomingMessage } from 'http'
 import { Readable } from 'stream'
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
 export async function POST(req: Request) {
-  const form = formidable({ uploadDir: tmpdir(), keepExtensions: true })
+  const tempPath = path.join(tmpdir(), `upload-${Date.now()}.csv`)
 
-  const tempPath = await new Promise<string>((resolve, reject) => {
-    const nodeReq = Object.assign(Readable.fromWeb(req.body as any), {
-      headers: Object.fromEntries(req.headers.entries()),
-      method: req.method,
-      url: req.url,
-    }) as unknown as IncomingMessage
+  const headers = Object.fromEntries(req.headers.entries())
 
-    form.parse(nodeReq, (err, fields, files) => {
-      if (err) return reject(err)
-      const f = (files.file as formidable.File)?.filepath
-      if (!f) return reject(new Error('File not provided'))
-      resolve(f)
+  await new Promise<void>((resolve, reject) => {
+    const bb = Busboy({ headers })
+    let fileWritten = false
+
+    bb.on('file', (_name, file) => {
+      fileWritten = true
+      const ws = createWriteStream(tempPath)
+      file.pipe(ws)
+      ws.on('finish', resolve)
+      ws.on('error', reject)
     })
-  }).catch((err) => {
-    throw new Error('Failed to parse form data: ' + err)
+
+    bb.on('error', reject)
+    bb.on('finish', () => {
+      if (!fileWritten) reject(new Error('File not provided'))
+    })
+
+    Readable.fromWeb(req.body as any).pipe(bb)
   })
 
   try {
