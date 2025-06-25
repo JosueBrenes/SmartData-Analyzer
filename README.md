@@ -1,5 +1,9 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## SmartData Analyzer
+
+This project includes a simple interface to upload CSV or XLSX files, automatically analyze the dataset and display charts and insights without manual configuration.
+
 ## Getting Started
 
 First, run the development server:
