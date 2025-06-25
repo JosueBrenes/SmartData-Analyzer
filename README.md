@@ -33,7 +33,7 @@ SmartData Analyzer es una herramienta web interactiva para la carga, análisis y
 2. Asegúrate de tener Python instalado y las dependencias necesarias en `backend/`:
 
    ```bash
-   pip install -r backend/docs/requirements.md
+   pip install -r backend/docs/requirements.txt
    ```
 
 3. Ejecuta el servidor de desarrollo:
