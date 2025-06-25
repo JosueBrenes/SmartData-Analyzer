@@ -1,26 +1,26 @@
-import { NextResponse } from "next/server";
-import Busboy from "busboy";
-import { promises as fs, createWriteStream } from "fs";
-import path from "path";
-import { spawn } from "child_process";
-import { tmpdir } from "os";
-import { Readable } from "stream";
-
+import formidable from 'formidable'
+import { promises as fs } from 'fs'
+export const runtime = 'nodejs'
 export async function POST(req: Request) {
-  const tempPath = path.join(tmpdir(), `upload-${Date.now()}.csv`);
+  const form = formidable({ uploadDir: tmpdir(), keepExtensions: true })
+  const stream = Readable.fromWeb(req.body as any) as any
+  stream.headers = Object.fromEntries(req.headers.entries())
 
-  const headers = Object.fromEntries(req.headers.entries());
+  const { files } = await new Promise<{
+    files: formidable.Files
+  }>((resolve, reject) => {
+    form.parse(stream, (err, _fields, files) => {
+      if (err) reject(err)
+      else resolve({ files })
+  const file = Array.isArray(files.file) ? files.file[0] : (files.file as formidable.File)
+  if (!file || !file.filepath) {
+    return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+  }
+  const tempPath = file.filepath
 
-  await new Promise<void>((resolve, reject) => {
-    const bb = Busboy({ headers });
-    let fileWritten = false;
-
-    bb.on("file", (_name, file) => {
-      fileWritten = true;
-      const ws = createWriteStream(tempPath);
-      file.pipe(ws);
-      ws.on("finish", resolve);
-      ws.on("error", reject);
+    if (data.error) {
+      return NextResponse.json(data, { status: 500 })
+    }
     });
 
     bb.on("error", reject);
