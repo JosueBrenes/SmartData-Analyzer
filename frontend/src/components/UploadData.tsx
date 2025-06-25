@@ -65,16 +65,16 @@ interface ChartConfig {
   description?: string;
 }
 
-interface AnalysisResult {
-  headers: string[];
-  types: string[];
-  stats: Record<string, any>;
-  correlations: Record<string, number>;
-  histograms: Record<string, { binEdges: number[]; counts: number[] }>;
-  clusters: any;
-  insights: string[];
-  rawRows?: string[][];
-}
+  interface AnalysisResult {
+    headers: string[];
+    types: string[];
+    stats: Record<string, unknown>;
+    correlations: Record<string, number>;
+    histograms: Record<string, { binEdges: number[]; counts: number[] }>;
+    clusters: unknown;
+    insights: string[];
+    rawRows?: string[][];
+  }
 
 interface InsightData {
   tipo: string;
@@ -106,7 +106,7 @@ export default function UploadDataImproved() {
       value: number;
       zScore?: number;
       iqrStatus?: string;
-      rowData: Record<string, any>;
+      rowData: Record<string, string>;
     }>
   >([]);
   const [insights, setInsights] = useState<InsightData[]>([]);
@@ -139,9 +139,9 @@ export default function UploadDataImproved() {
         const workbook = XLSX.read(data);
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const json: any[][] = XLSX.utils.sheet_to_json(worksheet, {
+        const json = XLSX.utils.sheet_to_json<(string | number)[]>(worksheet, {
           header: 1,
-        });
+        }) as (string | number)[][];
 
         if (json.length > 0) {
           headers = json[0].map(String);
@@ -291,11 +291,9 @@ export default function UploadDataImproved() {
       }
     });
 
-    // Outlier insights
-    let totalOutliers = 0;
-    Object.entries(data.stats).forEach(([variable, stats]) => {
+      // Outlier insights
+      Object.entries(data.stats).forEach(([variable, stats]) => {
       if (stats.outliers && stats.outliers > 0) {
-        totalOutliers += stats.outliers;
         insightData.push({
           tipo: "outlier",
           mensaje: `Se detectaron ${stats.outliers} valores atípicos en ${variable}`,
@@ -376,7 +374,7 @@ export default function UploadDataImproved() {
       value: number;
       zScore?: number;
       iqrStatus?: string;
-      rowData: Record<string, any>;
+      rowData: Record<string, string>;
     }> = [];
 
     if (data.rawRows) {
@@ -409,7 +407,7 @@ export default function UploadDataImproved() {
                 if (value > upperBound) iqrStatus = "Superior al rango IQR";
 
                 if (zScore > 2.5 || iqrStatus !== "") {
-                  const rowData: Record<string, any> = {};
+                  const rowData: Record<string, string> = {};
                   data.headers.forEach((h, i) => {
                     rowData[h] = row[i];
                   });
@@ -462,11 +460,11 @@ export default function UploadDataImproved() {
         </div>
       );
     }
-    return (
-      <p key={index}>
-        Tipo de gráfico '{chartConfig.type}' no soportado todavía.
-      </p>
-    );
+      return (
+        <p key={index}>
+          Tipo de gráfico &apos;{chartConfig.type}&apos; no soportado todavía.
+        </p>
+      );
   };
 
   return (

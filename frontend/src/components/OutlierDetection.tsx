@@ -26,14 +26,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-interface OutlierRecord {
-  id: number;
-  variable: string;
-  value: number;
-  zScore?: number;
-  iqrStatus?: string;
-  rowData: Record<string, any>;
-}
+  interface OutlierRecord {
+    id: number;
+    variable: string;
+    value: number;
+    zScore?: number;
+    iqrStatus?: string;
+    rowData: Record<string, string>;
+  }
 
 interface OutlierDetectionProps {
   outliers: OutlierRecord[];
@@ -207,9 +207,12 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                                 )}
                               </TableCell>
                               <TableCell>
-                                <Badge
-                                  variant={getSeverityColor(outlier) as any}
-                                >
+                                  <Badge
+                                    variant={
+                                      getSeverityColor(outlier) as
+                                        "destructive" | "secondary" | "outline"
+                                    }
+                                  >
                                   {getSeverityLevel(outlier)}
                                 </Badge>
                               </TableCell>

@@ -25,6 +25,7 @@ export default function BoxPlot({
 
   useEffect(() => {
     if (!plotRef.current || data.length === 0) return;
+    const plotElement = plotRef.current;
 
     // Dynamically import Plotly to avoid SSR issues
     import("plotly.js-dist-min")
@@ -79,20 +80,20 @@ export default function BoxPlot({
           displaylogo: false,
         };
 
-        Plotly.newPlot(plotRef.current!, traces, layout, config);
+        Plotly.newPlot(plotElement!, traces, layout, config);
       })
       .catch((error) => {
         console.error("Error loading Plotly:", error);
       });
 
     // Cleanup function
-    return () => {
-      if (plotRef.current) {
-        import("plotly.js-dist-min").then((Plotly) => {
-          Plotly.purge(plotRef.current!);
-        });
-      }
-    };
+      return () => {
+        if (plotElement) {
+          import("plotly.js-dist-min").then((Plotly) => {
+            Plotly.purge(plotElement);
+          });
+        }
+      };
   }, [data, title, xAxisTitle, yAxisTitle]);
 
   if (data.length === 0) {
