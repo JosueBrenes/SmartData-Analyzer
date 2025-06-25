@@ -23,15 +23,15 @@ export default function InsightCards({ insights }: InsightCardsProps) {
   const getInsightIcon = (tipo: string) => {
     switch (tipo) {
       case "correlacion":
-        return "🔁";
+        return "";
       case "outlier":
-        return "⚠️";
+        return "";
       case "cluster":
         return "🧩";
       case "general":
-        return "📊";
+        return "";
       default:
-        return "💡";
+        return "";
     }
   };
 
