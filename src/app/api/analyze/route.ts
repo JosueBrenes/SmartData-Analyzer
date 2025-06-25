@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server'
+import * as XLSX from 'xlsx'
 
 function parseCSV(text: string) {
   const lines = text.trim().split(/\r?\n/)
   const headers = lines[0].split(',')
   const rows = lines.slice(1).map((l) => l.split(','))
   return { headers, rows }
+}
+
+function parseXLSX(buffer: ArrayBuffer) {
+  const wb = XLSX.read(buffer, { type: 'array' })
+  const sheet = wb.Sheets[wb.SheetNames[0]]
+  const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 }) as string[][]
+  const headers = rows[0] as string[]
+  return { headers, rows: rows.slice(1) }
 }
 
 function detectType(values: string[]) {
@@ -65,8 +74,15 @@ export async function POST(req: Request) {
   if (!file) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 })
   }
-  const text = await file.text()
-  const { headers, rows } = parseCSV(text)
+  let parsed
+  if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+    const buffer = await file.arrayBuffer()
+    parsed = parseXLSX(buffer)
+  } else {
+    const text = await file.text()
+    parsed = parseCSV(text)
+  }
+  const { headers, rows } = parsed
   const columns = headers.map((_, i) => rows.map((r) => r[i]))
   const types = columns.map(detectType)
 
@@ -99,5 +115,78 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ headers, types, stats, correlations })
+  const histograms: Record<string, { binEdges: number[]; counts: number[] }> = {}
+  columns.forEach((col, idx) => {
+    if (types[idx] === 'numeric') {
+      const nums = col.map(Number)
+      const nBins = 10
+      const minVal = min(nums)
+      const maxVal = max(nums)
+      const binSize = (maxVal - minVal) / nBins
+      const counts = new Array(nBins).fill(0)
+      nums.forEach((v) => {
+        const bin = Math.min(nBins - 1, Math.floor((v - minVal) / binSize))
+        counts[bin]++
+      })
+      const binEdges = new Array(nBins).fill(0).map((_, i) => minVal + i * binSize)
+      histograms[headers[idx]] = { binEdges, counts }
+    }
+  })
+
+  function kmeans(points: number[][], k: number, iterations = 5) {
+    let centroids = points.slice(0, k)
+    let assignments = new Array(points.length).fill(0)
+    for (let it = 0; it < iterations; it++) {
+      assignments = points.map((p) => {
+        let minD = Infinity
+        let idx = 0
+        centroids.forEach((c, i) => {
+          const d = Math.hypot(...c.map((v, j) => v - p[j]))
+          if (d < minD) {
+            minD = d
+            idx = i
+          }
+        })
+        return idx
+      })
+      centroids = centroids.map((_, i) => {
+        const clusterPoints = points.filter((_, idx) => assignments[idx] === i)
+        if (clusterPoints.length === 0) return centroids[i]
+        const dim = clusterPoints[0].length
+        const avg = new Array(dim).fill(0)
+        clusterPoints.forEach((p) => {
+          p.forEach((v, j) => {
+            avg[j] += v
+          })
+        })
+        return avg.map((v) => v / clusterPoints.length)
+      })
+    }
+    return { assignments, centroids }
+  }
+
+  let clusters: any = null
+  const numericIndices = types
+    .map((t, i) => (t === 'numeric' ? i : -1))
+    .filter((i) => i !== -1)
+  if (numericIndices.length >= 2) {
+    const pts = rows.map((r) => numericIndices.map((idx) => Number(r[idx])))
+    clusters = { ...kmeans(pts, 3), points: pts }
+  }
+
+  const insights: string[] = [`Se analizaron ${rows.length} registros.`]
+  Object.entries(correlations).forEach(([pair, val]) => {
+    if (Math.abs(val) > 0.8) {
+      const [a, b] = pair.split('__')
+      insights.push(`Existe una fuerte correlación entre ${a} e ${b} (r = ${val.toFixed(2)})`)
+    }
+  })
+  Object.keys(stats).forEach((key) => {
+    const st = stats[key]
+    if (st.outliers && st.outliers > 0) {
+      insights.push(`Se detectaron ${st.outliers} valores atípicos en la columna ${key}`)
+    }
+  })
+
+  return NextResponse.json({ headers, types, stats, correlations, histograms, clusters, insights })
 }

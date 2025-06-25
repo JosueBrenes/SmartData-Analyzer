@@ -1,8 +1,19 @@
-"use client";
-
-import { useState, type ChangeEvent, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import {
+import * as XLSX from 'xlsx'
+import EDAResults from './EDAResults'
+    if (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')) {
+      const buffer = await f.arrayBuffer()
+      const wb = XLSX.read(buffer, { type: 'array' })
+      const sheet = wb.Sheets[wb.SheetNames[0]]
+      const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 }) as string[][]
+      const headers = rows[0] as string[]
+      setPreview({ headers, rows: rows.slice(1, 6) })
+    } else {
+      const text = await f.text()
+      const lines = text.trim().split(/\r?\n/)
+      const headers = lines[0].split(',')
+      const rows = lines.slice(1, 6).map((l) => l.split(','))
+      setPreview({ headers, rows })
+    }
   Card,
   CardContent,
   CardHeader,
@@ -51,11 +62,7 @@ export default function UploadDataImproved() {
     setPreview({ headers, rows });
   };
 
-  const handleUpload = async () => {
-    if (!file) return;
-    setLoading(true);
-    const fd = new FormData();
-    fd.append("file", file);
+      {result && <EDAResults result={result} />}
     try {
       const res = await fetch("/api/analyze", {
         // Assuming this API endpoint exists
