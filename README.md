@@ -17,6 +17,9 @@ SmartData Analyzer es una herramienta web interactiva para la carga, análisis y
 
 - `frontend/`: Interfaz desarrollada con **Next.js**, **TypeScript** y componentes reutilizables.
 - `backend/`: Script de análisis en **Python** con librerías como `pandas`, `scikit-learn`, y `numpy`.
+
+> ℹ️ Para ver cómo configurar y usar el backend manualmente, revisa el archivo [`backend/docs/backend_setup.md`](backend/docs/backend_setup.md)
+
 - API `POST /api/analyze`: Procesa los archivos enviados, ejecuta el análisis en Python y devuelve los resultados estructurados.
 
 ## 🚀 Uso Local
@@ -68,10 +71,4 @@ SmartData Analyzer es una herramienta web interactiva para la carga, análisis y
 - Frontend: **Next.js**, **TailwindCSS**, **Radix UI**, **Recharts**, **Lucide**, **XLSX.js**
 - Backend: **Python**, **scikit-learn**, **pandas**
 
-## 📄 Licencia
-
-Este proyecto es de código abierto y puede ser utilizado, modificado o extendido según las necesidades del usuario.
-
 ---
-
-Contribuciones, reportes de errores y sugerencias son bienvenidas 🚀
