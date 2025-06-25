@@ -3,6 +3,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { Layout, Config } from "plotly.js-dist-min";
 
 interface ClusterPoint {
   x: number;
@@ -26,20 +27,19 @@ export default function ClusterVisualization({
 }: ClusterVisualizationProps) {
   const plotRef = useRef<HTMLDivElement>(null);
 
-  // Get unique clusters and their colors
   const clusters = Array.from(
     new Set(data.map((point) => point.cluster))
   ).sort();
   const clusterColors = useMemo(
     () => [
-      "#3B82F6", // Blue
-      "#EF4444", // Red
-      "#10B981", // Green
-      "#F59E0B", // Yellow
-      "#8B5CF6", // Purple
-      "#EC4899", // Pink
-      "#06B6D4", // Cyan
-      "#84CC16", // Lime
+      "#3B82F6",
+      "#EF4444",
+      "#10B981",
+      "#F59E0B",
+      "#8B5CF6",
+      "#EC4899",
+      "#06B6D4",
+      "#84CC16",
     ],
     []
   );
@@ -62,7 +62,6 @@ export default function ClusterVisualization({
     if (!plotRef.current || data.length === 0) return;
     const plotElement = plotRef.current;
 
-    // Dynamically import Plotly to avoid SSR issues
     import("plotly.js-dist-min")
       .then((Plotly) => {
         const traces = clusters.map((cluster, index) => {
@@ -89,18 +88,18 @@ export default function ClusterVisualization({
           };
         });
 
-        const layout = {
+        const layout: Partial<Layout> = {
           title: {
             text: title,
             font: { size: 16, family: "Arial, sans-serif" },
           },
           xaxis: {
-            title: xAxisTitle,
+            title: { text: xAxisTitle },
             showgrid: true,
             gridcolor: "#e5e7eb",
           },
           yaxis: {
-            title: yAxisTitle,
+            title: { text: yAxisTitle },
             showgrid: true,
             gridcolor: "#e5e7eb",
           },
@@ -118,34 +117,37 @@ export default function ClusterVisualization({
           },
           showlegend: true,
           legend: {
-            orientation: "h" as const,
+            orientation: "h",
             y: -0.2,
             x: 0.5,
-            xanchor: "center" as const,
+            xanchor: "center",
           },
         };
 
-        const config = {
+        const config: Partial<Config> = {
           responsive: true,
           displayModeBar: true,
-          modeBarButtonsToRemove: ["pan2d", "lasso2d", "select2d"],
+          modeBarButtonsToRemove: [
+            "pan2d",
+            "lasso2d",
+            "select2d",
+          ] as Partial<Config>["modeBarButtonsToRemove"],
           displaylogo: false,
         };
 
-          Plotly.newPlot(plotElement!, traces, layout, config);
+        Plotly.newPlot(plotElement, traces, layout, config);
       })
       .catch((error) => {
         console.error("Error loading Plotly:", error);
       });
 
-    // Cleanup function
-      return () => {
-        if (plotElement) {
-          import("plotly.js-dist-min").then((Plotly) => {
-            Plotly.purge(plotElement);
-          });
-        }
-      };
+    return () => {
+      if (plotRef.current) {
+        import("plotly.js-dist-min").then((Plotly) => {
+          Plotly.purge(plotRef.current!);
+        });
+      }
+    };
   }, [data, title, xAxisTitle, yAxisTitle, clusters, clusterColors]);
 
   if (data.length === 0) {
