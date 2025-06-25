@@ -19,7 +19,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { UploadCloud, FileText, Loader2, BarChart3 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  UploadCloud,
+  FileText,
+  Loader2,
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
+  Users,
+} from "lucide-react";
 import * as XLSX from "xlsx";
 import {
   ResponsiveContainer,
@@ -31,6 +40,11 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import ClusterVisualization from "./ClusterVisualization";
+import BoxPlot from "./BoxPlot";
+import OutlierDetection from "./OutlierDetection";
+import CorrelationMatrix from "./CorrelationMatrix";
+import InsightCards from "./InsightCards";
 
 interface PreviewData {
   headers: string[];
@@ -40,11 +54,10 @@ interface PreviewData {
 interface ChartDataItem {
   name: string;
   value: number;
-  // Podría haber más propiedades dependiendo del gráfico
 }
 
 interface ChartConfig {
-  type: string; // 'histogram', 'scatter', etc.
+  type: string;
   title: string;
   data: ChartDataItem[];
   xKey: string;
@@ -52,14 +65,52 @@ interface ChartConfig {
   description?: string;
 }
 
+interface AnalysisResult {
+  headers: string[];
+  types: string[];
+  stats: Record<string, any>;
+  correlations: Record<string, number>;
+  histograms: Record<string, { binEdges: number[]; counts: number[] }>;
+  clusters: any;
+  insights: string[];
+  rawRows?: string[][];
+}
+
+interface InsightData {
+  tipo: string;
+  mensaje: string;
+}
+
+interface ClusterPoint {
+  x: number;
+  y: number;
+  cluster: number;
+  id?: number;
+}
+
 export default function UploadDataImproved() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
   const [textualReport, setTextualReport] = useState<string | null>(null);
-  const [charts, setCharts] = useState<ChartConfig[]>([]); // Estado para los datos de los gráficos
+  const [charts, setCharts] = useState<ChartConfig[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [boxplotData, setBoxplotData] = useState<
+    Array<{ categoria: string; valores: number[] }>
+  >([]);
+  const [outliers, setOutliers] = useState<
+    Array<{
+      id: number;
+      variable: string;
+      value: number;
+      zScore?: number;
+      iqrStatus?: string;
+      rowData: Record<string, any>;
+    }>
+  >([]);
+  const [insights, setInsights] = useState<InsightData[]>([]);
+  const [clusterData, setClusterData] = useState<ClusterPoint[]>([]);
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -68,7 +119,7 @@ export default function UploadDataImproved() {
     setFile(f);
     setResult(null);
     setTextualReport(null);
-    setCharts([]); // Limpiar gráficos anteriores
+    setCharts([]);
 
     try {
       let headers: string[] = [];
@@ -127,38 +178,261 @@ export default function UploadDataImproved() {
     setCharts([]);
     const fd = new FormData();
     fd.append("file", file);
+
     try {
-      const res = await fetch("/api/analyze-textual", {
+      const res = await fetch("/api/analyze", {
         method: "POST",
         body: fd,
       });
+
       if (!res.ok) {
         throw new Error(`API error: ${res.statusText}`);
       }
-      const data = await res.json();
 
-      if (data.textualAnalysis) {
-        setTextualReport(data.textualAnalysis);
-      } else {
-        setTextualReport(
-          "No se pudo generar el reporte textual o el formato es incorrecto."
-        );
-      }
+      const data: AnalysisResult = await res.json();
+      setResult(data);
 
-      if (data.chartsData && Array.isArray(data.chartsData)) {
-        setCharts(data.chartsData); // Guardar datos de los gráficos
-      }
+      // Generate textual report
+      const report = generateTextualReport(data);
+      setTextualReport(report);
 
-      setResult(data.rawAnalysis || data);
+      // Generate charts from histograms
+      const chartConfigs: ChartConfig[] = [];
+      Object.entries(data.histograms).forEach(([variable, histData]) => {
+        const chartData = histData.binEdges.map((edge, i) => ({
+          name: `${edge.toFixed(1)}-${(
+            edge +
+            (histData.binEdges[1] - histData.binEdges[0])
+          ).toFixed(1)}`,
+          value: histData.counts[i] || 0,
+        }));
+
+        chartConfigs.push({
+          type: "histogram",
+          title: `Distribución de ${variable}`,
+          description: `Histograma mostrando la distribución de valores para ${variable}`,
+          xKey: "name",
+          yKey: "value",
+          data: chartData,
+        });
+      });
+
+      setCharts(chartConfigs);
     } catch (error) {
       console.error("Upload failed:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Error desconocido";
       setTextualReport(`Error al generar el análisis: ${errorMessage}`);
-      setResult({ error: "Failed to analyze data. Please try again." });
+      setResult(null);
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateTextualReport = (data: AnalysisResult): string => {
+    const lines: string[] = [];
+
+    lines.push(`=== REPORTE DE ANÁLISIS DE DATOS ===\n`);
+    lines.push(`Archivo analizado con ${data.headers.length} columnas\n`);
+
+    lines.push(`--- ESTADÍSTICAS DESCRIPTIVAS ---`);
+    Object.entries(data.stats).forEach(([variable, stats]) => {
+      if (stats.mean !== undefined) {
+        lines.push(`${variable}:`);
+        lines.push(`  Media: ${stats.mean.toFixed(2)}`);
+        lines.push(`  Mediana: ${stats.median.toFixed(2)}`);
+        lines.push(`  Desviación estándar: ${stats.std.toFixed(2)}`);
+        lines.push(
+          `  Rango: ${stats.min.toFixed(2)} - ${stats.max.toFixed(2)}`
+        );
+        if (stats.outliers > 0) {
+          lines.push(`  Valores atípicos detectados: ${stats.outliers}`);
+        }
+        lines.push("");
+      } else if (stats.unique !== undefined) {
+        lines.push(`${variable}: ${stats.unique} valores únicos`);
+      }
+    });
+
+    lines.push(`--- CORRELACIONES SIGNIFICATIVAS ---`);
+    Object.entries(data.correlations).forEach(([pair, correlation]) => {
+      if (Math.abs(correlation) > 0.5) {
+        const [var1, var2] = pair.split("__");
+        const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
+        const direction = correlation > 0 ? "positiva" : "negativa";
+        lines.push(
+          `${var1} - ${var2}: Correlación ${direction} ${strength} (r = ${correlation.toFixed(
+            3
+          )})`
+        );
+      }
+    });
+
+    if (data.insights.length > 0) {
+      lines.push(`\n--- INSIGHTS ADICIONALES ---`);
+      data.insights.forEach((insight) => lines.push(insight));
+    }
+
+    // Generate insights data
+    const insightData: InsightData[] = [];
+
+    // Correlation insights
+    Object.entries(data.correlations).forEach(([pair, correlation]) => {
+      if (Math.abs(correlation) > 0.7) {
+        const [var1, var2] = pair.split("__");
+        const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
+        const direction = correlation > 0 ? "positiva" : "negativa";
+        insightData.push({
+          tipo: "correlacion",
+          mensaje: `${var1} e ${var2} tienen correlación ${direction} ${strength} (r = ${correlation.toFixed(
+            2
+          )})`,
+        });
+      }
+    });
+
+    // Outlier insights
+    let totalOutliers = 0;
+    Object.entries(data.stats).forEach(([variable, stats]) => {
+      if (stats.outliers && stats.outliers > 0) {
+        totalOutliers += stats.outliers;
+        insightData.push({
+          tipo: "outlier",
+          mensaje: `Se detectaron ${stats.outliers} valores atípicos en ${variable}`,
+        });
+      }
+    });
+
+    // General insights
+    insightData.push({
+      tipo: "general",
+      mensaje: `Dataset contiene ${data.rawRows?.length || 0} registros con ${
+        data.headers.length
+      } variables`,
+    });
+
+    if (data.clusters && data.clusters.centroids) {
+      insightData.push({
+        tipo: "cluster",
+        mensaje: `Se identificaron ${data.clusters.centroids.length} grupos distintos en los datos`,
+      });
+    }
+
+    setInsights(insightData);
+
+    // Generate boxplot data for categorical vs numeric comparisons
+    const boxplotData: Array<{ categoria: string; valores: number[] }> = [];
+    const categoricalColumns = data.headers.filter(
+      (_, i) => data.types[i] === "categorical"
+    );
+    const numericColumns = data.headers.filter(
+      (_, i) => data.types[i] === "numeric"
+    );
+
+    if (categoricalColumns.length > 0 && numericColumns.length > 0) {
+      const catIndex = data.headers.indexOf(categoricalColumns[0]);
+      const numIndex = data.headers.indexOf(numericColumns[0]);
+
+      const groupedData: Record<string, number[]> = {};
+
+      if (data.rawRows) {
+        data.rawRows.forEach((row: string[]) => {
+          const category = row[catIndex];
+          const numericValue = Number.parseFloat(row[numIndex]);
+
+          if (!isNaN(numericValue)) {
+            if (!groupedData[category]) {
+              groupedData[category] = [];
+            }
+            groupedData[category].push(numericValue);
+          }
+        });
+
+        Object.entries(groupedData).forEach(([categoria, valores]) => {
+          boxplotData.push({ categoria, valores });
+        });
+      }
+    }
+
+    setBoxplotData(boxplotData);
+
+    // Generate cluster visualization data
+    if (data.clusters && data.clusters.points && data.clusters.assignments) {
+      const clusterPoints: ClusterPoint[] = data.clusters.points.map(
+        (point: number[], index: number) => ({
+          x: point[0],
+          y: point[1],
+          cluster: data.clusters.assignments[index],
+          id: index + 1,
+        })
+      );
+      setClusterData(clusterPoints);
+    }
+
+    // Generate outlier data for detailed analysis
+    const outlierData: Array<{
+      id: number;
+      variable: string;
+      value: number;
+      zScore?: number;
+      iqrStatus?: string;
+      rowData: Record<string, any>;
+    }> = [];
+
+    if (data.rawRows) {
+      data.rawRows.forEach((row: string[], rowIndex: number) => {
+        data.headers.forEach((header, colIndex) => {
+          if (data.types[colIndex] === "numeric") {
+            const value = Number.parseFloat(row[colIndex]);
+            if (!isNaN(value)) {
+              const stats = data.stats[header];
+              if (
+                stats &&
+                stats.mean !== undefined &&
+                stats.std !== undefined
+              ) {
+                const zScore = Math.abs((value - stats.mean) / stats.std);
+
+                const allValues = data
+                  .rawRows!.map((r: string[]) => Number.parseFloat(r[colIndex]))
+                  .filter((v: number) => !isNaN(v))
+                  .sort((a: number, b: number) => a - b);
+
+                const q1 = allValues[Math.floor(allValues.length * 0.25)];
+                const q3 = allValues[Math.floor(allValues.length * 0.75)];
+                const iqr = q3 - q1;
+                const lowerBound = q1 - 1.5 * iqr;
+                const upperBound = q3 + 1.5 * iqr;
+
+                let iqrStatus = "";
+                if (value < lowerBound) iqrStatus = "Inferior al rango IQR";
+                if (value > upperBound) iqrStatus = "Superior al rango IQR";
+
+                if (zScore > 2.5 || iqrStatus !== "") {
+                  const rowData: Record<string, any> = {};
+                  data.headers.forEach((h, i) => {
+                    rowData[h] = row[i];
+                  });
+
+                  outlierData.push({
+                    id: rowIndex + 1,
+                    variable: header,
+                    value,
+                    zScore,
+                    iqrStatus: iqrStatus || undefined,
+                    rowData,
+                  });
+                }
+              }
+            }
+          }
+        });
+      });
+    }
+
+    setOutliers(outlierData);
+
+    return lines.join("\n");
   };
 
   const handleSelectFileClick = () => {
@@ -166,8 +440,6 @@ export default function UploadDataImproved() {
   };
 
   const renderChart = (chartConfig: ChartConfig, index: number) => {
-    // Por ahora, solo implementamos un tipo de gráfico (BarChart para histograma)
-    // Esto se puede expandir para otros tipos de gráficos (scatter, pie, etc.)
     if (chartConfig.type === "histogram" || chartConfig.type === "barchart") {
       return (
         <div key={index} className="mb-8 p-4 border rounded-lg shadow">
@@ -190,7 +462,6 @@ export default function UploadDataImproved() {
         </div>
       );
     }
-    // Añadir más 'else if' para otros tipos de gráficos
     return (
       <p key={index}>
         Tipo de gráfico '{chartConfig.type}' no soportado todavía.
@@ -199,9 +470,7 @@ export default function UploadDataImproved() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8 max-w-3xl">
-      {" "}
-      {/* Aumentado max-w */}
+    <div className="container mx-auto p-4 md:p-8 max-w-7xl">
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold">
@@ -271,42 +540,129 @@ export default function UploadDataImproved() {
             </div>
           )}
 
-          {textualReport && (
-            <div>
-              <h3 className="text-lg font-medium mb-2">
-                Resumen del Análisis Automatizado
-              </h3>
-              <ScrollArea className="bg-muted p-4 rounded-md max-h-[500px] text-sm">
-                <pre className="whitespace-pre-wrap break-words font-sans">
-                  {textualReport}
-                </pre>
-              </ScrollArea>
-            </div>
-          )}
+          {result && (
+            <Tabs defaultValue="insights" className="w-full">
+              <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger
+                  value="insights"
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Insights
+                </TabsTrigger>
+                <TabsTrigger
+                  value="correlations"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Correlaciones
+                </TabsTrigger>
+                <TabsTrigger
+                  value="distributions"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Distribuciones
+                </TabsTrigger>
+                <TabsTrigger
+                  value="boxplots"
+                  className="flex items-center gap-2"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  BoxPlots
+                </TabsTrigger>
+                <TabsTrigger
+                  value="clusters"
+                  className="flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  Clusters
+                </TabsTrigger>
+                <TabsTrigger
+                  value="outliers"
+                  className="flex items-center gap-2"
+                >
+                  <AlertTriangle className="h-4 w-4" />
+                  Outliers
+                </TabsTrigger>
+              </TabsList>
 
-          {charts.length > 0 && (
-            <div>
-              <h3 className="text-lg font-medium mb-4 mt-6 flex items-center">
-                <BarChart3 className="mr-2 h-5 w-5" />
-                Visualizaciones Generadas
-              </h3>
-              {charts.map((chartConfig, index) =>
-                renderChart(chartConfig, index)
-              )}
-            </div>
-          )}
+              <TabsContent value="insights" className="space-y-6">
+                {insights.length > 0 && <InsightCards insights={insights} />}
+                {textualReport && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">
+                      Resumen del Análisis Automatizado
+                    </h3>
+                    <ScrollArea className="bg-muted p-4 rounded-md max-h-[500px] text-sm">
+                      <pre className="whitespace-pre-wrap break-words font-sans">
+                        {textualReport}
+                      </pre>
+                    </ScrollArea>
+                  </div>
+                )}
+              </TabsContent>
 
-          {result && !textualReport && charts.length === 0 && (
-            <div>
-              <h3 className="text-lg font-medium mb-2">
-                Resultado del Análisis (JSON)
-              </h3>
-              <ScrollArea className="bg-muted p-4 rounded-md max-h-80 text-sm">
-                <pre className="whitespace-pre-wrap break-all">
-                  {JSON.stringify(result, null, 2)}
-                </pre>
-              </ScrollArea>
-            </div>
+              <TabsContent value="correlations" className="space-y-6">
+                {result && Object.keys(result.correlations).length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">
+                      Matriz de Correlación entre Variables Numéricas
+                    </h3>
+                    <CorrelationMatrix correlations={result.correlations} />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="distributions" className="space-y-6">
+                {charts.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4 mt-6 flex items-center">
+                      <BarChart3 className="mr-2 h-5 w-5" />
+                      Distribuciones de Variables
+                    </h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      {charts.map((chartConfig, index) =>
+                        renderChart(chartConfig, index)
+                      )}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="boxplots" className="space-y-6">
+                {boxplotData.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">
+                      Distribución por Categorías
+                    </h3>
+                    <BoxPlot data={boxplotData} />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="clusters" className="space-y-6">
+                {clusterData.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">
+                      Agrupamiento Automático
+                    </h3>
+                    <ClusterVisualization data={clusterData} />
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="outliers" className="space-y-6">
+                {outliers.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">
+                      Detección de Valores Atípicos
+                    </h3>
+                    <OutlierDetection outliers={outliers} />
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           )}
         </CardContent>
         <CardFooter>
