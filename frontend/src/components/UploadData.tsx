@@ -65,16 +65,33 @@ interface ChartConfig {
   description?: string;
 }
 
-  interface AnalysisResult {
-    headers: string[];
-    types: string[];
-    stats: Record<string, unknown>;
-    correlations: Record<string, number>;
-    histograms: Record<string, { binEdges: number[]; counts: number[] }>;
-    clusters: unknown;
-    insights: string[];
-    rawRows?: string[][];
-  }
+interface ColumnStats {
+  mean?: number;
+  median?: number;
+  std?: number;
+  min?: number;
+  max?: number;
+  outliers?: number;
+  unique?: number;
+}
+
+interface ClusterInfo {
+  assignments?: number[];
+  centroids?: number[][];
+  points?: number[][];
+  [key: string]: unknown;
+}
+
+interface AnalysisResult {
+  headers: string[];
+  types: string[];
+  stats: Record<string, ColumnStats>;
+  correlations: Record<string, number>;
+  histograms: Record<string, { binEdges: number[]; counts: number[] }>;
+  clusters: ClusterInfo | null;
+  insights: string[];
+  rawRows?: string[][];
+}
 
 interface InsightData {
   tipo: string;
@@ -129,10 +146,10 @@ export default function UploadDataImproved() {
         const text = await f.text();
         const lines = text.trim().split(/\r?\n/);
         if (lines.length > 0) {
-          headers = lines[0].split(",").map((h) => h.trim());
+          headers = lines[0].split(",").map((h: string) => h.trim());
           rows = lines
             .slice(1, 6)
-            .map((l) => l.split(",").map((cell) => cell.trim()));
+            .map((l: string) => l.split(",").map((cell: string) => cell.trim()));
         }
       } else if (f.name.endsWith(".xlsx")) {
         const data = await f.arrayBuffer();
@@ -145,7 +162,7 @@ export default function UploadDataImproved() {
 
         if (json.length > 0) {
           headers = json[0].map(String);
-          rows = json.slice(1, 6).map((row) => row.map(String));
+          rows = json.slice(1, 6).map((row: (string | number)[]) => row.map(String));
         }
       } else {
         alert(
@@ -198,7 +215,8 @@ export default function UploadDataImproved() {
 
       // Generate charts from histograms
       const chartConfigs: ChartConfig[] = [];
-      Object.entries(data.histograms).forEach(([variable, histData]) => {
+      Object.entries(data.histograms).forEach(
+        ([variable, histData]: [string, { binEdges: number[]; counts: number[] }]) => {
         const chartData = histData.binEdges.map((edge, i) => ({
           name: `${edge.toFixed(1)}-${(
             edge +
@@ -236,7 +254,7 @@ export default function UploadDataImproved() {
     lines.push(`Archivo analizado con ${data.headers.length} columnas\n`);
 
     lines.push(`--- ESTADÍSTICAS DESCRIPTIVAS ---`);
-    Object.entries(data.stats).forEach(([variable, stats]) => {
+    Object.entries(data.stats).forEach(([variable, stats]: [string, ColumnStats]) => {
       if (stats.mean !== undefined) {
         lines.push(`${variable}:`);
         lines.push(`  Media: ${stats.mean.toFixed(2)}`);
@@ -255,7 +273,8 @@ export default function UploadDataImproved() {
     });
 
     lines.push(`--- CORRELACIONES SIGNIFICATIVAS ---`);
-    Object.entries(data.correlations).forEach(([pair, correlation]) => {
+    Object.entries(data.correlations).forEach(
+      ([pair, correlation]: [string, number]) => {
       if (Math.abs(correlation) > 0.5) {
         const [var1, var2] = pair.split("__");
         const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
@@ -270,14 +289,15 @@ export default function UploadDataImproved() {
 
     if (data.insights.length > 0) {
       lines.push(`\n--- INSIGHTS ADICIONALES ---`);
-      data.insights.forEach((insight) => lines.push(insight));
+      data.insights.forEach((insight: string) => lines.push(insight));
     }
 
     // Generate insights data
     const insightData: InsightData[] = [];
 
     // Correlation insights
-    Object.entries(data.correlations).forEach(([pair, correlation]) => {
+    Object.entries(data.correlations).forEach(
+      ([pair, correlation]: [string, number]) => {
       if (Math.abs(correlation) > 0.7) {
         const [var1, var2] = pair.split("__");
         const strength = Math.abs(correlation) > 0.8 ? "fuerte" : "moderada";
@@ -292,7 +312,7 @@ export default function UploadDataImproved() {
     });
 
       // Outlier insights
-      Object.entries(data.stats).forEach(([variable, stats]) => {
+      Object.entries(data.stats).forEach(([variable, stats]: [string, ColumnStats]) => {
       if (stats.outliers && stats.outliers > 0) {
         insightData.push({
           tipo: "outlier",
@@ -321,10 +341,10 @@ export default function UploadDataImproved() {
     // Generate boxplot data for categorical vs numeric comparisons
     const boxplotData: Array<{ categoria: string; valores: number[] }> = [];
     const categoricalColumns = data.headers.filter(
-      (_, i) => data.types[i] === "categorical"
+      (_, i: number) => data.types[i] === "categorical"
     );
     const numericColumns = data.headers.filter(
-      (_, i) => data.types[i] === "numeric"
+      (_, i: number) => data.types[i] === "numeric"
     );
 
     if (categoricalColumns.length > 0 && numericColumns.length > 0) {
@@ -346,7 +366,8 @@ export default function UploadDataImproved() {
           }
         });
 
-        Object.entries(groupedData).forEach(([categoria, valores]) => {
+        Object.entries(groupedData).forEach(
+          ([categoria, valores]: [string, number[]]) => {
           boxplotData.push({ categoria, valores });
         });
       }
@@ -379,7 +400,7 @@ export default function UploadDataImproved() {
 
     if (data.rawRows) {
       data.rawRows.forEach((row: string[], rowIndex: number) => {
-        data.headers.forEach((header, colIndex) => {
+        data.headers.forEach((header: string, colIndex: number) => {
           if (data.types[colIndex] === "numeric") {
             const value = Number.parseFloat(row[colIndex]);
             if (!isNaN(value)) {
@@ -408,7 +429,7 @@ export default function UploadDataImproved() {
 
                 if (zScore > 2.5 || iqrStatus !== "") {
                   const rowData: Record<string, string> = {};
-                  data.headers.forEach((h, i) => {
+                  data.headers.forEach((h: string, i: number) => {
                     rowData[h] = row[i];
                   });
 
@@ -620,7 +641,7 @@ export default function UploadDataImproved() {
                       Distribuciones de Variables
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {charts.map((chartConfig, index) =>
+                      {charts.map((chartConfig: ChartConfig, index: number) =>
                         renderChart(chartConfig, index)
                       )}
                     </div>
