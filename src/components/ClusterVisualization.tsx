@@ -20,7 +20,7 @@ interface ClusterVisualizationProps {
 
 export default function ClusterVisualization({
   data,
-  title = "Agrupamiento Automático de Usuarios",
+  title = "Visualización de Clusters",
   xAxisTitle = "Variable X",
   yAxisTitle = "Variable Y",
 }: ClusterVisualizationProps) {

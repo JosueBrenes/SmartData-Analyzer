@@ -17,9 +17,9 @@ interface BoxPlotProps {
 
 export default function BoxPlot({
   data,
-  title = "Distribución de Ingresos por Región",
-  xAxisTitle = "Región",
-  yAxisTitle = "Ingresos",
+  title = "Distribución de Valores por Categoría",
+  xAxisTitle = "Categoría",
+  yAxisTitle = "Valor",
 }: BoxPlotProps) {
   const plotRef = useRef<HTMLDivElement>(null);
 
