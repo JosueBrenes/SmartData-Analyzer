@@ -1,74 +1,182 @@
-# SmartData Analyzer
+# SmartData Analyzer 🚀
 
-SmartData Analyzer es una herramienta web interactiva para la carga, análisis y visualización automatizada de datasets en formato **CSV** o **XLSX**. Su objetivo es simplificar el proceso de exploración de datos, permitiendo obtener insights estadísticos, detectar valores atípicos y visualizar correlaciones y clusters sin necesidad de programación.
+Una herramienta web moderna e intuitiva para el análisis automatizado de datos. Permite cargar, procesar y visualizar datasets en formato CSV y Excel con análisis estadístico avanzado, detección de outliers, clustering automático y generación de insights en lenguaje natural.
 
-## ✨ Características
+## 🎯 Características principales
 
-- 🤖 **Análisis automático con IA**: genera insights descriptivos y correlacionales en lenguaje natural.
-- 📊 **Estadísticas descriptivas** por variable (media, mediana, desviación, rango, etc.)
-- 📉 **Histogramas y boxplots** para explorar la distribución de los datos
-- 🧮 **Matriz de correlación** con detección automática de relaciones fuertes
-- 🧠 **Clustering automático** usando KMeans
-- 🚨 **Detección de outliers** con Isolation Forest
-- 🧵 Interfaz moderna con TailwindCSS, Radix UI y Recharts
-- 🔎 **Vista previa de datos** y navegación por pestañas
+### Análisis Automático Inteligente
+- 🤖 **Generación de insights** descriptivos y correlacionales automáticos
+- 📊 **Estadísticas descriptivas** completas (media, mediana, desviación, cuartiles)
+- 📈 **Análisis de correlaciones** con detección de relaciones significativas
 
-## 🧱 Estructura del Proyecto
+### Visualizaciones Interactivas
+- 📉 **Histogramas dinámicos** para distribuciones de datos
+- 🎯 **Boxplots** para identificación visual de outliers
+- 🌐 **Matriz de correlación** con mapa de calor interactivo
+- 🔍 **Gráficos de clusters** 2D/3D con centroides
 
-- `frontend/`: Interfaz desarrollada con **Next.js**, **TypeScript** y componentes reutilizables.
-- `backend/`: Script de análisis en **Python** con librerías como `pandas`, `scikit-learn`, y `numpy`.
+### Detección Avanzada de Anomalías
+- 🚨 **Outliers automáticos** usando Isolation Forest y método IQR
+- 📋 **Tablas interactivas** de registros anómalos
+- 🔬 **Análisis multivariado** de patrones atípicos
 
-> ℹ️ Para ver cómo configurar y usar el backend manualmente, revisa el archivo [`backend/docs/backend_setup.md`](backend/docs/backend_setup.md)
+### Experiencia de Usuario Superior
+- 🎨 **Interfaz moderna** con TailwindCSS y shadcn/ui
+- 📱 **Diseño responsivo** para todos los dispositivos
+- ⚡ **Carga drag & drop** de archivos
+- 🔄 **Vista previa** instantánea de datos
 
-- API `POST /api/analyze`: Procesa los archivos enviados, ejecuta el análisis en Python y devuelve los resultados estructurados.
+## 🏗️ Arquitectura del proyecto
 
-## 🚀 Uso Local
+```
+SmartData-Analyzer/
+├── frontend/                 # Aplicación Next.js + React
+│   ├── src/
+│   │   ├── app/             # App Router (Next.js 14)
+│   │   ├── components/      # Componentes React reutilizables
+│   │   ├── layouts/         # Layouts compartidos
+│   │   └── lib/            # Utilidades y configuración
+│   └── docs/               # 📚 Documentación del frontend
+│       ├── README.md       # Guía general del frontend
+│       ├── components.md   # Documentación de componentes
+│       ├── architecture.md # Arquitectura y patrones
+│       └── development.md  # Guía de desarrollo
+│
+├── backend/                 # Motor de análisis Python
+│   ├── analyze.py          # Script principal de análisis
+│   └── docs/               # 📚 Documentación del backend
+│       ├── README.md       # Guía general del backend
+│       ├── api.md         # Documentación de la API
+│       ├── algorithms.md  # Algoritmos y metodologías
+│       ├── deployment.md  # Guía de despliegue
+│       └── requirements.txt # Dependencias Python
+│
+└── README.md               # Este archivo - Vista general
 
-1. Instala dependencias del frontend:
+## 🚀 Inicio rápido
 
-   ```bash
-   npm install
-   ```
+### 1. Configuración inicial
 
-2. Asegúrate de tener Python instalado y las dependencias necesarias en `backend/`:
+```bash
+# Clonar el repositorio
+git clone <url-del-repositorio>
+cd SmartData-Analyzer
 
-   ```bash
-   pip install -r backend/docs/requirements.txt
-   ```
+# Instalar dependencias del frontend
+cd frontend
+npm install
 
-3. Ejecuta el servidor de desarrollo:
+# Instalar dependencias del backend
+cd ../backend
+pip install -r docs/requirements.txt
+```
 
-   ```bash
-   npm run dev
-   ```
+### 2. Ejecutar en desarrollo
 
-4. Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+```bash
+# Desde la carpeta frontend
+cd frontend
+npm run dev
+```
 
-## 📂 Formatos Soportados
+### 3. Acceder a la aplicación
 
-- `.csv` codificados en UTF-8 o Latin-1
-- `.xlsx` o `.xls` (requiere tener `openpyxl` instalado)
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador y comienza a analizar tus datos.
 
-## 🔧 Requisitos
+## 📊 Stack tecnológico
 
-- Node.js 18+
-- Python 3.10+
-- Paquetes de Python necesarios:
-  - `pandas`
-  - `numpy`
-  - `scikit-learn`
-  - `openpyxl`
+### Frontend (Aplicación Web)
+- **Framework**: Next.js 14 con App Router
+- **Lenguaje**: TypeScript
+- **Styling**: TailwindCSS + shadcn/ui
+- **Visualizaciones**: Recharts + Plotly.js
+- **Componentes**: Radix UI primitives
+- **Iconos**: Lucide React
 
-## 🧪 Análisis Hecho con
+### Backend (Motor de Análisis)
+- **Lenguaje**: Python 3.10+
+- **Análisis**: pandas, NumPy
+- **Machine Learning**: scikit-learn
+- **Clustering**: K-Means
+- **Detección de outliers**: Isolation Forest
+- **Manejo de archivos**: openpyxl
 
-- `pandas`: limpieza y estadística descriptiva
-- `scikit-learn`: clustering y outlier detection
-- `numpy`: histogramas e IQR
-- `busboy`: manejo de uploads en Node.js
+### Integración
+- **API**: Next.js API Routes
+- **Upload**: Busboy (multipart/form-data)
+- **Comunicación**: Frontend ↔ Python via spawn
 
-## 📦 Tecnologías Usadas
+## 📂 Formatos soportados
 
-- Frontend: **Next.js**, **TailwindCSS**, **Radix UI**, **Recharts**, **Lucide**, **XLSX.js**
-- Backend: **Python**, **scikit-learn**, **pandas**
+| Formato | Extensiones | Codificación |
+|---------|-------------|--------------|
+| CSV | `.csv` | UTF-8, Latin-1 (auto-detección) |
+| Excel | `.xlsx`, `.xls` | Nativo |
+
+**Límites recomendados**:
+- Tamaño máximo: 100MB
+- Filas: hasta 1M registros
+- Columnas: hasta 1000 variables
+
+## 🔧 Requisitos del sistema
+
+### Desarrollo
+- **Node.js** 18.0+
+- **Python** 3.10+
+- **npm** o **yarn**
+- **Git**
+
+### Producción
+- **Servidor Node.js** con soporte para spawn de procesos Python
+- **Python runtime** con librerías científicas instaladas
+- Al menos **4GB RAM** para datasets grandes
+- **Espacio temporal** para procesamiento de archivos
+
+## 📚 Documentación detallada
+
+### Para desarrolladores frontend
+- [📖 Frontend Overview](frontend/docs/README.md) - Guía general y setup
+- [🧩 Componentes](frontend/docs/components.md) - Documentación de cada componente
+- [🏛️ Arquitectura](frontend/docs/architecture.md) - Patrones y estructura
+- [⚒️ Desarrollo](frontend/docs/development.md) - Workflow y debugging
+
+### Para desarrolladores backend
+- [📖 Backend Overview](backend/docs/README.md) - Configuración y uso
+- [🔌 API Reference](backend/docs/api.md) - Endpoints y respuestas
+- [🧮 Algoritmos](backend/docs/algorithms.md) - Métodos estadísticos
+- [🚀 Deployment](backend/docs/deployment.md) - Guía de despliegue
+
+## 🧪 Análisis implementados
+
+| Análisis | Algoritmo | Propósito |
+|----------|-----------|-----------|
+| **Estadísticas descriptivas** | pandas.describe() | Media, mediana, desviación, cuartiles |
+| **Detección outliers (IQR)** | Q1 - 1.5×IQR, Q3 + 1.5×IQR | Valores fuera del rango normal |
+| **Detección outliers (ML)** | Isolation Forest | Anomalías multivariadas |
+| **Correlaciones** | Pearson correlation | Relaciones lineales entre variables |
+| **Clustering** | K-Means (k=3) | Agrupación automática de registros |
+| **Histogramas** | numpy.histogram | Distribución de frecuencias |
+
+## 🎯 Casos de uso
+
+- **Análisis exploratorio** de datasets desconocidos
+- **Limpieza de datos** mediante detección de outliers
+- **Investigación académica** con análisis estadístico automático
+- **Business Intelligence** para insights rápidos
+- **Data Science** como herramienta de primera exploración
+
+## 🤝 Contribuir
+
+1. Fork del repositorio
+2. Crear rama feature: `git checkout -b feature/nueva-funcionalidad`
+3. Commit cambios: `git commit -m 'feat: agregar nueva funcionalidad'`
+4. Push a la rama: `git push origin feature/nueva-funcionalidad`
+5. Crear Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
+
+**¿Necesitas ayuda?** Revisa la [documentación completa](frontend/docs/README.md) o abre un [issue](../../issues) en GitHub.
