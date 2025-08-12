@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -26,14 +26,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
-  interface OutlierRecord {
-    id: number;
-    variable: string;
-    value: number;
-    zScore?: number;
-    iqrStatus?: string;
-    rowData: Record<string, string>;
-  }
+interface OutlierRecord {
+  id: number;
+  variable: string;
+  value: number;
+  zScore?: number;
+  iqrStatus?: string;
+  rowData: Record<string, string>;
+}
 
 interface OutlierDetectionProps {
   outliers: OutlierRecord[];
@@ -140,7 +140,7 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
           {Object.keys(groupedOutliers).length} variable(s)
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
         <div className="space-y-4">
           {Object.entries(groupedOutliers).map(
             ([variable, variableOutliers]) => (
@@ -148,11 +148,12 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                 key={variable}
                 open={expandedVariables.has(variable)}
                 onOpenChange={() => toggleVariable(variable)}
+                className="border rounded-lg"
               >
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-between p-4 h-auto"
+                    className="w-full justify-between p-4 h-auto mb-2"
                   >
                     <div className="flex items-center gap-3">
                       {expandedVariables.has(variable) ? (
@@ -162,7 +163,7 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                       )}
                       <div className="text-left">
                         <div className="font-medium">{variable}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-sm text-muted-foreground mt-1">
                           {variableOutliers.length} valor(es) atípico(s)
                         </div>
                       </div>
@@ -171,9 +172,10 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                   </Button>
                 </CollapsibleTrigger>
 
-                <CollapsibleContent className="space-y-2">
-                  <ScrollArea className="max-h-96">
-                    <Table>
+                <CollapsibleContent className="space-y-2 mt-2">
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-16">ID</TableHead>
@@ -185,9 +187,11 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {variableOutliers.map((outlier) => (
-                          <>
-                            <TableRow key={`${outlier.id}-${outlier.variable}`}>
+                        {variableOutliers.map((outlier, index) => (
+                          <React.Fragment
+                            key={`${outlier.id}-${outlier.variable}-${index}`}
+                          >
+                            <TableRow>
                               <TableCell className="font-mono text-sm">
                                 #{outlier.id}
                               </TableCell>
@@ -207,12 +211,14 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                                 )}
                               </TableCell>
                               <TableCell>
-                                  <Badge
-                                    variant={
-                                      getSeverityColor(outlier) as
-                                        "destructive" | "secondary" | "outline"
-                                    }
-                                  >
+                                <Badge
+                                  variant={
+                                    getSeverityColor(outlier) as
+                                      | "destructive"
+                                      | "secondary"
+                                      | "outline"
+                                  }
+                                >
                                   {getSeverityLevel(outlier)}
                                 </Badge>
                               </TableCell>
@@ -236,32 +242,32 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
 
                             {showDetails.has(outlier.id) && (
                               <TableRow>
-                                <TableCell colSpan={6} className="bg-muted/50">
-                                  <div className="p-4">
-                                    <h4 className="font-medium mb-2">
+                                <TableCell colSpan={6} className="bg-muted/30 border-t">
+                                  <div className="p-4 space-y-3">
+                                    <h4 className="font-medium text-foreground">
                                       Datos completos del registro #{outlier.id}
                                     </h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 text-sm">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
                                       {Object.entries(outlier.rowData).map(
                                         ([key, value]) => (
                                           <div
                                             key={key}
-                                            className={`p-2 rounded ${
+                                            className={`p-3 rounded-md border ${
                                               key === outlier.variable
-                                                ? "bg-amber-100 border border-amber-300"
-                                                : "bg-background"
+                                                ? "bg-amber-50 border-amber-200 ring-1 ring-amber-200"
+                                                : "bg-background border-border"
                                             }`}
                                           >
-                                            <div className="font-medium text-xs text-muted-foreground">
+                                            <div className="font-medium text-xs text-muted-foreground mb-1">
                                               {key}
                                             </div>
-                                            <div className="font-mono">
+                                            <div className="font-mono text-sm">
                                               {key === outlier.variable ? (
                                                 <span className="font-bold text-amber-700">
                                                   {value}
                                                 </span>
                                               ) : (
-                                                value
+                                                <span className="text-foreground">{value}</span>
                                               )}
                                             </div>
                                           </div>
@@ -272,23 +278,24 @@ export default function OutlierDetection({ outliers }: OutlierDetectionProps) {
                                 </TableCell>
                               </TableRow>
                             )}
-                          </>
+                          </React.Fragment>
                         ))}
                       </TableBody>
-                    </Table>
-                  </ScrollArea>
+                      </Table>
+                    </div>
+                  </div>
                 </CollapsibleContent>
               </Collapsible>
             )
           )}
         </div>
 
-        <div className="mt-6 p-4 bg-muted rounded-lg">
-          <h4 className="font-medium mb-2 flex items-center gap-2">
+        <div className="mt-8 p-4 bg-muted rounded-lg border-t">
+          <h4 className="font-medium mb-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" />
             Criterios de Detección
           </h4>
-          <div className="text-sm text-muted-foreground space-y-1">
+          <div className="text-sm text-muted-foreground space-y-2">
             <p>
               • <strong>Z-Score {">"} 3:</strong> Valor extremadamente atípico
               (severidad alta)

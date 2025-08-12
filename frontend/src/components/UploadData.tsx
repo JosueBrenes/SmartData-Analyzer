@@ -91,6 +91,15 @@ interface AnalysisResult {
   clusters: ClusterInfo | null;
   insights: string[];
   rawRows?: string[][];
+  outlier_indices?: number[];
+  outlier_details?: Array<{
+    id: number;
+    variable: string;
+    value: number;
+    zScore?: number;
+    iqrStatus?: string;
+    rowData: Record<string, string>;
+  }>;
 }
 
 interface InsightData {
@@ -397,7 +406,8 @@ export default function UploadDataImproved() {
     setBoxplotData(boxplotData);
 
     // Generate cluster visualization data
-    if (data.clusters && data.clusters.points && data.clusters.assignments) {
+    if (data.clusters && data.clusters.points && data.clusters.assignments && 
+        Array.isArray(data.clusters.points) && data.clusters.points.length > 0) {
       const clusterPoints: ClusterPoint[] = data.clusters.points.map(
         (point: number[], index: number) => ({
           x: point[0],
@@ -410,10 +420,12 @@ export default function UploadDataImproved() {
         })
       );
       setClusterData(clusterPoints);
+    } else {
+      setClusterData([]);
     }
 
-    // Generate outlier data for detailed analysis
-    const outlierData: Array<{
+    // Use outlier data from backend if available, otherwise generate it
+    let outlierData: Array<{
       id: number;
       variable: string;
       value: number;
@@ -422,7 +434,10 @@ export default function UploadDataImproved() {
       rowData: Record<string, string>;
     }> = [];
 
-    if (data.rawRows) {
+    if (data.outlier_details && Array.isArray(data.outlier_details)) {
+      outlierData = data.outlier_details;
+    } else if (data.rawRows) {
+      // Fallback to frontend generation if backend doesn't provide details
       data.rawRows.forEach((row: string[], rowIndex: number) => {
         data.headers.forEach((header: string, colIndex: number) => {
           if (data.types[colIndex] === "numeric") {
@@ -647,12 +662,17 @@ export default function UploadDataImproved() {
               </TabsContent>
 
               <TabsContent value="correlations" className="space-y-6">
-                {result && Object.keys(result.correlations).length > 0 && (
+                {result && Object.keys(result.correlations).length > 0 ? (
                   <div>
                     <h3 className="text-lg font-medium mb-4">
                       Matriz de Correlación entre Variables Numéricas
                     </h3>
                     <CorrelationMatrix correlations={result.correlations} />
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground p-8">
+                    <p>No se encontraron correlaciones entre variables numéricas.</p>
+                    <p className="text-sm mt-2">Se necesitan al menos 2 variables numéricas para calcular correlaciones.</p>
                   </div>
                 )}
               </TabsContent>
@@ -685,23 +705,37 @@ export default function UploadDataImproved() {
               </TabsContent>
 
               <TabsContent value="clusters" className="space-y-6">
-                {clusterData.length > 0 && (
+                {result && result.clusters && !result.clusters.error && clusterData.length > 0 ? (
                   <div>
                     <h3 className="text-lg font-medium mb-4">
                       Agrupamiento Automático
                     </h3>
                     <ClusterVisualization data={clusterData} />
                   </div>
+                ) : (
+                  <div className="text-center text-muted-foreground p-8">
+                    <p>No se pudo realizar el análisis de clustering.</p>
+                    <p className="text-sm mt-2">
+                      {result?.clusters?.error 
+                        ? `Error: ${result.clusters.error}`
+                        : "Se necesitan al menos 2 variables numéricas y 3 registros para realizar clustering."}
+                    </p>
+                  </div>
                 )}
               </TabsContent>
 
               <TabsContent value="outliers" className="space-y-6">
-                {outliers.length > 0 && (
+                {outliers.length > 0 ? (
                   <div>
                     <h3 className="text-lg font-medium mb-4">
                       Detección de Valores Atípicos
                     </h3>
                     <OutlierDetection outliers={outliers} />
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground p-8">
+                    <p>✓ No se detectaron valores atípicos en los datos.</p>
+                    <p className="text-sm mt-2">Todos los valores están dentro de los rangos esperados.</p>
                   </div>
                 )}
               </TabsContent>

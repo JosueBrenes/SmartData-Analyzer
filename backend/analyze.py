@@ -88,31 +88,77 @@ def main(path: str) -> None:
 
     # Análisis de clustering (agrupamiento) con K-Means
     clusters: Dict[str, Any] | None = None
-    if len(numeric_cols) >= 2:
+    if len(numeric_cols) >= 2 and len(df) >= 3:  # Necesitamos al menos 3 filas para 3 clusters
         try:
-            # Configurar K-Means con 3 clusters
-            model = KMeans(n_clusters=3, n_init=10, random_state=0)
+            # Determinar número óptimo de clusters (máximo 3, mínimo 2)
+            n_clusters = min(3, max(2, len(df) // 3))
+            model = KMeans(n_clusters=n_clusters, n_init=10, random_state=0)
             points = df[numeric_cols].fillna(0).values  # Rellenar valores nulos con 0
             assignments = model.fit_predict(points)  # Asignar cada punto a un cluster
-            clusters = {
-                "assignments": assignments.tolist(),  # Asignaciones de cluster por fila
-                "centroids": model.cluster_centers_.tolist(),  # Centros de cada cluster
-                "points": points.tolist(),  # Puntos de datos originales
-            }
+            
+            # Asegurar que tenemos datos válidos
+            if len(points) > 0 and len(assignments) > 0:
+                clusters = {
+                    "assignments": assignments.tolist(),  # Asignaciones de cluster por fila
+                    "centroids": model.cluster_centers_.tolist(),  # Centros de cada cluster
+                    "points": points.tolist(),  # Puntos de datos originales
+                }
         except Exception as e:
             clusters = {"error": str(e)}
 
-    # Detectar outliers usando Isolation Forest
+    # Detectar outliers usando Isolation Forest y métodos estadísticos
     outlier_indices: list[int] = []
+    outlier_details: list[Dict[str, Any]] = []
+    
     if len(numeric_cols) >= 1:
         try:
             # Isolation Forest identifica puntos anómalos en los datos
-            iso = IsolationForest(random_state=0)
+            iso = IsolationForest(random_state=0, contamination=0.1)
             preds = iso.fit_predict(df[numeric_cols].fillna(0))
             # -1 indica outlier, 1 indica punto normal
             outlier_indices = [int(i) for i, v in enumerate(preds) if v == -1]
+            
+            # Generar detalles de outliers para cada registro identificado
+            for row_idx in outlier_indices:
+                for col_name in numeric_cols:
+                    col_value = df[col_name].iloc[row_idx]
+                    if not pd.isna(col_value):
+                        # Calcular Z-score
+                        col_mean = df[col_name].mean()
+                        col_std = df[col_name].std()
+                        z_score = abs((col_value - col_mean) / col_std) if col_std > 0 else 0
+                        
+                        # Calcular IQR
+                        q1 = df[col_name].quantile(0.25)
+                        q3 = df[col_name].quantile(0.75)
+                        iqr = q3 - q1
+                        lower_bound = q1 - 1.5 * iqr
+                        upper_bound = q3 + 1.5 * iqr
+                        
+                        iqr_status = ""
+                        if col_value < lower_bound:
+                            iqr_status = "Inferior al rango IQR"
+                        elif col_value > upper_bound:
+                            iqr_status = "Superior al rango IQR"
+                        
+                        # Solo incluir si es realmente un outlier (Z-score alto o fuera del IQR)
+                        if z_score > 2.0 or iqr_status:
+                            row_data = {}
+                            for i, header in enumerate(df.columns):
+                                row_data[header] = str(df.iloc[row_idx, i])
+                            
+                            outlier_details.append({
+                                "id": row_idx + 1,
+                                "variable": col_name,
+                                "value": float(col_value),
+                                "zScore": float(z_score),
+                                "iqrStatus": iqr_status if iqr_status else None,
+                                "rowData": row_data
+                            })
+                        
         except Exception as e:
             outlier_indices = []
+            outlier_details = []
 
     # Generar insights automáticos basados en el análisis
     insights = [f"Se analizaron {len(df)} registros."]
@@ -143,6 +189,7 @@ def main(path: str) -> None:
         "insights": insights,  # Insights automáticos generados
         "rawRows": df.astype(str).values.tolist(),  # Datos originales como strings
         "outlier_indices": outlier_indices,  # Índices de filas con outliers
+        "outlier_details": outlier_details,  # Detalles completos de outliers
     }
 
     # Imprimir resultado como JSON para el frontend
